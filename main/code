@@ -1,0 +1,518 @@
+alisa = {"монеты": 5, "жизни": 3, "рюкзак": [], "буквы": [], "история": [], "союзники": [], "враги": [], "нейтралы": [], "npc_status": {}, "поражения_в_боях": 0}
+
+npcs={
+    "Шляпник":{"questions":[{"q":"Что лучше: сказать то, что думаешь, или думать то, что говоришь?","options":["Сказать то, что думаешь","Думать то, что говоришь","Не говорить вообще","Говорить бездумно"],"correct":1,"hint":"Слова без мысли — пустой звук","hint_cost":{"монеты":5,"карты":1}},{"q":"Время — он или оно?","options":["Оно","Он","Ни то, ни другое","Зависит от часов"],"correct":1,"hint":"Тот, кто говорит «оно», никогда с Ним чай не пил","hint_cost":{"монеты":5,"карты":1}}],"reward_coins":15,"reward_cards":2,"trap_options":["Выпей чай — станет легче","Хочешь знать, что было бы иначе?"],"trap_effects":[{"жизни":-1},{"статы":{"доверие":-15}}],"suit":"Черви","battle_type":"время","rank":3,"battle_letter":"Л"},
+    "Кот":{"questions":[{"q":"Коты всегда падают на четыре лапы. А я?","options":["Тоже на четыре","На улыбку","Я вообще не падаю","Только если никто не видит"],"correct":2,"hint":"Чтобы упасть, надо быть целиком","hint_cost":{"монеты":5,"карты":1}},{"q":"Что останется, когда меня не станет? (введите слово)","type":"text","correct_answers":["улыбка","улыбку"],"hint":"То, что появляется при радости","hint_cost":{"монеты":5,"карты":1}}],"reward_coins":20,"reward_cards":3,"trap_options":["Три двери. Одна ведёт домой","Увидеть своё будущее?"],"trap_effects":[{"монеты":-10},{"статы":{"любопытство":-20}}],"suit":"Трефы","battle_type":"лабиринт","rank":2,"battle_letter":"Е"},
+    "Королева":{"questions":[{"q":"В моём саду розы должны быть красными. Почему?","options":["Потому что красный — цвет крови","Потому что это мой цвет","Потому что белые скучные","Потому что так хочет Король"],"correct":1,"hint":"Какой цвет у червовой масти?","hint_cost":{"монеты":5,"карты":1}},{"q":"Садовники перекрасили розы в красный, но дождь смыл краску. Какой цвет остался? (введите слово)","type":"text","correct_answers":["белый","белые"],"hint":"Цвет снега","hint_cost":{"монеты":5,"карты":1}}],"reward_coins":25,"reward_cards":3,"trap_options":["Стань моим советником. Власть в твоих руках","Твой друг предал тебя. Доказать?"],"trap_effects":[{"жизни":-1},{"союзники":-1}],"suit":"Черви","battle_type":"сад","rank":1,"battle_letter":"Ь"}
+}
+suits={"Черви":{"strength":"Трефы","weakness":"Пики","bonus":"Время останавливается на 1 ход"},"Трефы":{"strength":"Бубны","weakness":"Черви","bonus":"Проход через ловушку без штрафа"},"Бубны":{"strength":"Пики","weakness":"Трефы","bonus":"Видишь хитрость врага"},"Пики":{"strength":"Черви","weakness":"Бубны","bonus":"Видишь будущий ход врага"}}
+scenes=[
+    {"id":1,"name":"Чаепитие","letter":"Е","npc":"Шляпник","req_ally":None,"type":"npc_meet"},
+    {"id":2,"name":"Озеро","letter":"З","npc":"Фея","req_ally":None,"type":"event_fairy"},
+    {"id":3,"name":"Лабиринт","letter":"К","npc":"Кот","req_ally":None,"type":"npc_meet"},
+    {"id":4,"name":"Сад","letter":"Р","npc":"Королева","req_ally":None,"type":"npc_meet"},
+    {"id":5,"name":"Суд","letter":"З","npc":None,"req_ally":"Шляпник","type":"check"},
+    {"id":6,"name":"Финал","letter":None,"npc":None,"req_ally":None,"type":"final"}
+]
+target_word="Зазеркалье"
+events={"memory":[{"scene":"Чаепитие","question":"Кого ты встретил на Чаепитии?","options":["Шляпник","Кот","Королева"],"correct":0}],"battles":{"Шляпник":{"question":"Время течёт быстро. Сколько секунд в минуте?","options":["50","60","70","100"],"correct":1},"Кот":{"question":"В лабиринте 3 двери. Какая ведёт к выходу?","options":["Левая","Средняя","Правая","Никакая"],"correct":1},"Королева":{"question":"Какого цвета должны быть розы в саду Королевы?","options":["Белые","Красные","Синие","Золотые"],"correct":1}}}
+game_state={"suit":None,"battle_wins":0,"battle_scenario":0,"memory_check_done":False,"scene_letter_earned":{}}
+
+
+def get_valid_input(min_val, max_val, prompt="Ваш выбор"):
+    while True:
+        choice = input(f"{prompt} ({min_val}-{max_val}): ")
+        if choice.isdigit():
+            num = int(choice)
+            if min_val <= num <= max_val:
+                return num
+        
+        print(f"Введите число от {min_val} до {max_val}")
+
+def get_text_input(prompt="Ваш ответ"):
+    while True:
+        text = input(f"{prompt} ")
+        if len(text.strip()) > 0:
+            return text.strip().lower()
+        print("Введите слово")
+
+def buy_hint(q_data):
+    hint_cost = q_data["hint_cost"] if "hint_cost" in q_data else {}
+    cost_coins = hint_cost["монеты"] if "монеты" in hint_cost else 0
+    cost_cards = hint_cost["карты"] if "карты" in hint_cost else 0
+    print(f"Подсказка доступна! Стоимость: {cost_coins} монет или {cost_cards} карты")
+    print("1. Купить подсказку")
+    print("2. Пропустить")
+    if get_valid_input(1, 2, "Ваш выбор") == 2:
+        return False
+    # Проверяем ресурсы и списываем
+    if alisa["монеты"] >= cost_coins:
+        alisa["монеты"] -= cost_coins
+        print(f"Оплачено монетами. Осталось: {alisa['монеты']}")
+    elif alisa["карты"] >= cost_cards:
+        alisa["карты"] -= cost_cards
+        print(f"Оплачено картами. Осталось: {alisa['карты']}")
+    else:
+        print("Недостаточно ресурсов")
+        return False
+
+    print("Подсказка: " + q_data["hint"])
+    alisa["история"].append("Куплена подсказка")
+    return True
+
+
+def choose_suit():
+    print("Выберите свою боевую масть:")
+    suits_list = ["Черви", "Трефы", "Бубны", "Пики"]
+    index = 1
+    for suit in suits_list:
+        print(f"{index}. {suit} сильна против: {suits[suit]['strength']}, слаба против: {suits[suit]['weakness']}")
+        index += 1
+
+    choice = get_valid_input(1, 4, "Ваш выбор")
+    game_state["suit"] = suits_list[choice - 1]
+
+    print(f"Вы выбрали масть: {game_state['suit']}")
+    alisa["история"].append(f"Выбрана масть: {game_state['suit']}")
+
+
+def check_suit_advantage(player_suit, enemy_suit):
+    player_data = suits[player_suit]  # напрямую берём данные
+    if player_data["strength"] == enemy_suit:
+        return "strong"
+    elif player_data["weakness"] == enemy_suit:
+        return "weak"
+    return "neutral"
+
+
+def battle_scene(enemy_name, has_ally_help=False):
+    # Проверка сразу, чтобы словари не ломались
+    if enemy_name not in npcs or enemy_name not in events["battles"]:
+        print("Противник не сопротивляется.")
+        return True
+
+    npc_info = npcs[enemy_name]
+    battle_info = events["battles"][enemy_name]
+
+    enemy_suit = npc_info["suit"]
+    player_suit = game_state["suit"]
+    advantage = check_suit_advantage(player_suit, enemy_suit)
+
+    print(f"Битва: {enemy_name}")
+    print(f"Масть врага: {enemy_suit}, Ваша масть: {player_suit}")
+    if has_ally_help:
+        print("Союзник помогает! Можно переответить при ошибке.")
+    if advantage == "strong":
+        print(f"Преимущество! Бонус: {suits[player_suit]['bonus']}")
+    elif advantage == "weak":
+        print("Осторожно! Масть врага сильна против вашей.")
+
+    print(battle_info["question"])
+
+    # Выводим варианты с обычным счётчиком
+    i = 1
+    for option in battle_info["options"]:
+        print(f"{i}. {option}")
+        i += 1
+
+    # Первый выбор игрока
+    choice = get_valid_input(1, len(battle_info["options"]), "Ваш ответ")
+    is_correct = (choice - 1 == battle_info["correct"])
+
+    # Второй шанс с союзником
+    if not is_correct and has_ally_help:
+        print("Союзник подсказывает: попробуй ещё раз!")
+        choice = get_valid_input(1, len(battle_info["options"]), "Второй ответ")
+        is_correct = (choice - 1 == battle_info["correct"])
+
+    # Вычисляем шансы на победу компактно
+    win_chance = int(is_correct) + (advantage == "strong") + has_ally_help - (advantage == "weak")
+
+    if win_chance >= 1:
+        alisa["монеты"] += npc_info["reward_coins"]
+        alisa["карты"] += npc_info["reward_cards"]
+        game_state["battle_wins"] += 1
+
+        if enemy_name in alisa["враги"]:
+            letter = npc_info["battle_letter"]
+            alisa["буквы"].append(letter)
+            alisa["враги"].remove(enemy_name)
+            alisa["нейтралы"].append(enemy_name)
+            print(f"Победа! Вы получили букву: {letter}")
+            alisa["история"].append(f"Победа над {enemy_name} — буква {letter}")
+        else:
+            print(f"Победа! +{npc_info['reward_coins']} монет, +{npc_info['reward_cards']} карт")
+            alisa["история"].append(f"Битва с {enemy_name}: победа")
+        return True
+    else:
+        alisa["жизни"] -= 1
+        alisa["поражения_в_боях"] += 1
+        print(f"Поражение! -1 жизнь. Жизней осталось: {alisa['жизни']}")
+        alisa["история"].append(f"Битва с {enemy_name}: поражение")
+        return False
+
+
+def final_battles():
+    enemies_count = len(alisa["враги"])
+    if enemies_count == 0:
+        print("У вас нет врагов. Мирный финал!")
+        return False
+
+    print("Финальные битвы")
+
+    if enemies_count == 1:
+        enemy_name = alisa["враги"][0]
+        has_help = len(alisa["союзники"]) >= 1
+        if has_help:
+            print("Союзник поможет вам в бою!")
+        battle_scene(enemy_name, has_ally_help=has_help)
+        game_state["battle_scenario"] = 1
+
+    elif enemies_count == 2:
+        print("Два врага! Союзник поможет только в первой битве.")
+        ally_name = alisa["союзники"][0] if len(alisa["союзники"]) > 0 else None
+        enemies_to_fight = alisa["враги"][:]
+        i = 0
+        while i < len(enemies_to_fight):
+            enemy_name = enemies_to_fight[i]
+            if alisa["жизни"] <= 0:
+                break
+            has_help = (i == 0 and ally_name is not None)
+            battle_scene(enemy_name, has_ally_help=has_help)
+            i += 1
+        game_state["battle_scenario"] = 2
+
+    elif enemies_count >= 3:
+        print("Три врага! Вы сражаетесь в одиночку.")
+        enemies_to_fight = alisa["враги"][:]
+        for enemy_name in enemies_to_fight:
+            if alisa["жизни"] <= 0:
+                break
+            battle_scene(enemy_name, has_ally_help=False)
+        game_state["battle_scenario"] = 3
+
+    return True
+
+
+def fairy_scene():
+    print("Озеро: Встреча с Феей. На берегу вы видите опечаленную Фею. "
+          "Фея: «Я потеряла ключ от своего сундука. Не поможешь найти?» "
+          "1. Помочь найти ключ  2. Пройти мимо")
+
+    choice = get_valid_input(1, 2, "Ваш выбор")
+
+    if choice == 1:
+        alisa["монеты"] += 10
+        alisa["союзники"].append("Фея")
+        alisa["npc_status"]["Фея"] = "ally"
+        alisa["буквы"].append("З")
+        game_state["scene_letter_earned"][2] = True
+        print(f"Вы нашли ключ в камышах. Фея в благодарность дарит вам 10 монет и вы получили букву: З")
+        alisa["история"].append("Фея: союзник, получена буква З")
+        return True
+    else:
+        print("Вы прошли мимо, Фея грустно вздохнула.")
+        alisa["история"].append("Фея: отказано в помощи")
+        return False
+
+def final_word_puzzle():
+    letters_count = len(alisa["буквы"])
+    print(f"Финальная головоломка. Собранные буквы: {', '.join(alisa['буквы'])} (всего {letters_count})")
+
+    if letters_count < 4:
+        print("Слишком мало букв. Слово угадать невозможно.")
+        alisa["история"].append("Финальное слово: недостаточно букв")
+        return False
+
+    print(f"Подсказка: слово из {len(target_word)} букв - это место, куда попала Алиса")
+    attempts = 0
+    max_attempts = 3
+
+    while attempts < max_attempts:
+        word_input = input("Введите слово: ").lower()
+        if word_input == target_word.lower():
+          print(f"Верно! Слово: {target_word}")  
+          alisa["история"].append(f"Финальное слово угадано: {target_word}")
+          return True
+        attempts += 1
+        if attempts < max_attempts:
+            print(f"Неверно. Осталось попыток: {max_attempts - attempts}")
+        else:
+            print("Попытки закончились")
+            alisa["история"].append("Финальное слово не угадано")
+
+    return False
+
+
+def save_log(filename, ending):
+    with open(filename, "w", encoding="utf-8") as f:
+        print("Отчёт игры «Страна Чудес»", file=f)
+        print("История действий:", file=f)
+        i = 1
+        for record in alisa["история"]:
+            print(f"{i}. {record}", file=f)
+            i += 1
+
+        # Собранные буквы и итоговое слово
+        print(f"Собранные буквы: {' '.join(alisa['буквы'])}, Итоговое слово: {' '.join(alisa['буквы'])}", file=f)
+
+        # Финальная статистика
+        print(
+            f"Финальная статистика: Масть: {game_state['suit']}, Монеты: {alisa['монеты']}, "
+            f"Карты: {alisa['карты']}, Жизни: {alisa['жизни']}, "
+            f"Союзники ({len(alisa['союзники'])}): {' '.join(alisa['союзники'])}, "
+            f"Враги ({len(alisa['враги'])}): {' '.join(alisa['враги'])}, "
+            f"Победа в битвах: {game_state['battle_wins']}, Поражений в битвах: {alisa['поражения_в_боях']}, "
+            f"Концовка: {ending}",
+            file=f
+        )
+
+    print(f"Отчёт сохранён: {filename}")
+
+
+def enemy_trap():
+    if len(alisa["враги"]) == 0:
+        return False
+
+    enemy_name = alisa["враги"][0]
+    if enemy_name not in npcs:
+        return False
+
+    npc_info = npcs[enemy_name]
+    trap_index = len(alisa["история"]) % len(npc_info["trap_options"])
+    trap_text = npc_info["trap_options"][trap_index]
+    trap_effect = npc_info["trap_effects"][trap_index]
+
+    print(f"{enemy_name} шепчет из тени: «{trap_text}». Варианты: 1. Принять  2. Отказаться")
+    choice = get_valid_input(1, 2, "Ваш выбор")
+
+    if choice == 1:
+        messages = []
+        if "жизни" in trap_effect:
+            alisa["жизни"] += trap_effect["жизни"]
+            messages.append(f"Жизней осталось: {alisa['жизни']}")
+        if "монеты" in trap_effect:
+            alisa["монеты"] = max(0, alisa["монеты"] + trap_effect["монеты"])
+            messages.append(f"Монет осталось: {alisa['монеты']}")
+        if "статы" in trap_effect:
+            for stat, value in trap_effect["статы"].items():
+                if stat in alisa["статы"]:
+                    alisa["статы"][stat] += value
+        alisa["история"].append(f"Ловушка от {enemy_name}: принята")
+        messages.append("Ловушка сработала!")
+        print(". ".join(messages))
+    else:
+        alisa["история"].append(f"Ловушка от {enemy_name}: отклонена")
+        print("Вы отказались от предложения")
+
+    return True
+
+
+def memory_check(scene_index):
+    if game_state["memory_check_done"]:
+        return False
+    if scene_index == 3:
+        game_state["memory_check_done"] = True
+        memory_data = events["memory"][0]
+        print("Проверка памяти!")
+        print(memory_data["question"])
+        for i, option in enumerate(memory_data["options"]):
+            print(str(i + 1) + ". " + option)
+        choice = get_valid_input(1, 3, "Ваш ответ")
+        if choice == memory_data["correct"] + 1:
+            alisa["монеты"] = alisa["монеты"] + 10
+            alisa["статы"]["любопытство"] = alisa["статы"]["любопытство"] + 5
+            print("Верно! +10 монет, +5 любопытства.")
+            alisa["история"].append("Проверка памяти: верно")
+        else:
+            alisa["монеты"] = max(0, alisa["монеты"] - 5)
+            print("Неверно. -5 монет.")
+            alisa["история"].append("Проверка памяти: неверно")
+        return True
+    return False
+
+
+def meet_npc(npc_name, scene_id):
+    if not npc_name or npc_name not in npcs:
+        return None
+    data = npcs[npc_name]
+    print(f"Встреча: {npc_name}")
+    correct_count = 0
+
+    for q_data in data["questions"]:
+        print(f"Вопрос: {q_data['q']}")
+        if q_data.get("type") == "text":
+            answer = get_text_input("Ваш ответ")
+            if answer in q_data.get("correct_answers", []):
+                correct_count += 1
+                print("Верно!")
+            elif buy_hint(q_data):
+                answer2 = get_text_input("Попробуйте ещё раз")
+                if answer2 in q_data.get("correct_answers", []):
+                    correct_count += 1
+                    print("Верно!")
+        else:
+            idx = 1
+            for option in q_data["options"]:
+                print(f"{idx}. {option}")
+                idx += 1
+            choice = get_valid_input(1, len(q_data["options"]), "Ваш ответ")
+            if choice - 1 == q_data["correct"]:
+                correct_count += 1
+                print("Верно!")
+            elif buy_hint(q_data):
+                choice2 = get_valid_input(1, len(q_data["options"]), "Второй ответ")
+                if choice2 - 1 == q_data["correct"]:
+                    correct_count += 1
+                    print("Верно!")
+
+    if correct_count == 2:
+        alisa["союзники"].append(npc_name)
+        alisa["npc_status"][npc_name] = "ally"
+        alisa["монеты"] += data["reward_coins"]
+        alisa["карты"] += data["reward_cards"]
+        game_state["scene_letter_earned"][scene_id] = True
+        print(f"{npc_name} стал союзником! +{data['reward_coins']} монет, +{data['reward_cards']} карт")
+        alisa["история"].append(f"{npc_name}: союзник")
+        return "ally"
+    elif correct_count == 1:
+        alisa["нейтралы"].append(npc_name)
+        alisa["npc_status"][npc_name] = "neutral"
+        game_state["scene_letter_earned"][scene_id] = True
+        print(f"{npc_name} остался нейтральным. Буква получена, но в бою он не поможет")
+        alisa["история"].append(f"{npc_name}: нейтрал")
+        return "neutral"
+    else:
+        alisa["враги"].append(npc_name)
+        alisa["npc_status"][npc_name] = "enemy"
+        alisa["жизни"] -= 1
+        game_state["scene_letter_earned"][scene_id] = False
+        print(f"{npc_name} стал врагом! -1 жизнь. Буква не получена")
+        alisa["история"].append(f"{npc_name}: враг")
+        return "enemy"
+
+
+def check_letter_collection(scene):
+    letter, req_ally, scene_id, npc_name = scene["letter"], scene["req_ally"], scene["id"], scene["npc"]
+    alisa["рюкзак"].append(scene["name"])
+    if not letter:
+        return False
+
+    if req_ally:
+        if req_ally in alisa["союзники"]:
+            alisa["буквы"].append(letter)
+            alisa["история"].append(f"Буква {letter} получена при поддержке {req_ally}")
+            print(f"Союзник {req_ally} помог получить букву: {letter}")
+            return True
+        print(f"Нет союзника ({req_ally}). Буква не получена.")
+        alisa["история"].append(f"Буква не получена — нет союзника")
+        return False
+
+    if npc_name in npcs and game_state["scene_letter_earned"].get(scene_id, False):
+        alisa["буквы"].append(letter)
+        alisa["история"].append(f"Буква {letter} получена в сцене {scene['name']}")
+        print(f"Вы получили букву: {letter}")
+        return True
+
+    if npc_name:
+        print(f"Буква не получена (персонаж стал врагом).")
+    return False
+
+def get_ending(word_guessed):
+    allies_count = len(alisa["союзники"])
+    enemies_count = len(alisa["враги"])
+    battle_wins = game_state["battle_wins"]
+
+    if alisa["жизни"] <= 0:
+        return "Потеряшка (смерть)"
+    if not word_guessed:
+        return "Заблудившийся (слово не угадано)"
+    if allies_count == 4 and enemies_count == 0 and alisa["поражения_в_боях"] == 0:
+        return "Королева чудес (идеальная победа)"
+    if allies_count >= 3 and (battle_wins >= 1 or enemies_count == 0):
+        return "Королева чудес"
+    if allies_count == 2 and battle_wins >= 1:
+        return "Дипломат"
+    if allies_count == 1 and battle_wins >= 1:
+        return "Искатель"
+    if battle_wins >= 2 and allies_count == 0:
+        return "Одинокий воин"
+    if alisa["монеты"] >= 60 and allies_count <= 1:
+        return "Торговец"
+    if enemies_count >= 2:
+        return "Потеряшка (враги)"
+    return "Пробуждение"
+
+
+def main_game():
+    print("Игра Страна чудес")
+    print(f"Соберите буквы и угадайте финальное слово. Ваши выборы влияют на концовку!")
+    print(f"Слово: {'_ ' * len(target_word)}")
+
+    choose_suit()
+    scene_index = 0
+
+    while alisa["жизни"] > 0 and scene_index < len(scenes):
+        scene = scenes[scene_index]
+        print(f"Сцена {scene['id']}: {scene['name']}")
+
+        stype = scene["type"]
+        if stype == "final":
+            scene_index += 1
+            continue
+        elif stype == "npc_meet":
+            meet_npc(scene["npc"], scene["id"])
+        elif stype == "event_fairy":
+            fairy_scene()
+        elif stype == "check":
+            print("Проверка союзников")
+
+        memory_check(scene_index)
+        if len(alisa["враги"]) > 0 and scene_index % 2 == 1:
+            enemy_trap()
+
+        check_letter_collection(scene)
+
+        if len(alisa["враги"]) == 3:
+            print("Все три персонажа стали врагами! Ситуация критическая.")
+        if alisa["жизни"] <= 0:
+            print("Жизни закончились.")
+            break
+
+        scene_index += 1
+
+    if len(alisa["враги"]) > 0 and alisa["жизни"] > 0:
+        final_battles()
+
+    # союзники дарят буквы, которые нельзя было получить в боях
+    battle_letters = [("Л", "Шляпник"), ("Е", "Кот"), ("Е", "Шляпник"), ("Ь", "Королева"), ("А", "Кот"), ("А", "Королева")]
+    if len(alisa["враги"]) == 0 and alisa["жизни"] > 0:
+        given = []
+        for letter, npc_name in battle_letters:
+            if npc_name in alisa["союзники"]:
+                needed_count = sum(1 for l, n in battle_letters if l == letter)
+                if alisa["буквы"].count(letter) < needed_count:
+                    alisa["буквы"].append(letter)
+                    given.append(letter + " от " + npc_name)
+        if given:
+            print("Союзники делятся своими секретами и дарят буквы: " + ", ".join(given))
+    if alisa["жизни"] <= 0:
+        print("Вы погибли.")
+        word_guessed = False
+        final_ending = "Потеряшка (смерть в бою)"
+    else:
+        word_guessed = final_word_puzzle()
+        final_ending = get_ending(word_guessed)
+    print("ИГРА ОКОНЧЕНА")
+    print("Масть: " + str(game_state["suit"]))
+    print("Монеты: " + str(alisa["монеты"]) + " | Карты: " + str(alisa["карты"]) + " | Жизни: " + str(alisa["жизни"]))
+    print("Союзники (" + str(len(alisa["союзники"])) + "): " + (", ".join(alisa["союзники"]) if alisa["союзники"] else "нет"))
+    print("Враги (" + str(len(alisa["враги"])) + "): " + (", ".join(alisa["враги"]) if alisa["враги"] else "нет"))
+    print("Побед в битвах: " + str(game_state["battle_wins"]))
+    print("Собранные буквы: " + "".join(alisa["буквы"]))
+    print("Концовка: " + final_ending)
+    print("ЗАЗЕРКАЛЬЕ")
+    save_log("game_log.txt", final_ending)
+
+
+main_game()
