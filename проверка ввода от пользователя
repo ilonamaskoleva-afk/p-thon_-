@@ -1,0 +1,26 @@
+1) def get_valid_input(min_val, max_val, prompt="Ваш выбор"):
+    while True:
+        choice = input(f"{prompt} ({min_val}-{max_val}): ")
+        if choice.isdigit():
+            num = int(choice)
+            if min_val <= num <= max_val:
+                return num
+        
+        print(f"Введите число от {min_val} до {max_val}")
+
+А ВОТ ЗДЕСЬ Я НАДЕЮСЬ НАМ ЗАДАДУТ ВОПРОС 
+def get_valid_input(max_val, prompt="Ваш выбор", min_val=1):
+    """
+    Функция для ввода числа от min_val до max_val.
+    min_val по умолчанию = 1, поэтому его можно не указывать.
+    """
+.....И ДАЛЬШЕ КАК ОБЫЧНО
+то есть у нас нумерация с 1 начнается (1-2 и 1-3, поэтому экономнее писать так  min_val=1 но опять же ждем вопрос от преподавателя)
+
+
+2) def get_text_input(prompt="Ваш ответ"): 
+    while True:
+        text = input(f"{prompt}: ").strip().lower()
+        if text.isalpha(): ПРОВЕРКА ЧТО ТЕКСТ А НЕ ЦИФРЫ или не какие-то !-++--№№№ даже такое не примет: привет22
+            return text
+        print("Введите текст, используя только бкувы!")
