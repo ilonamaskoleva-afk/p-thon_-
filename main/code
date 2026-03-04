@@ -24,10 +24,6 @@ def get_text_input(prompt="Ваш ответ"):
         print("Введите текст!")
 
 def buy_hint(q_data, npc_name, question_number):
-    key = f"{npc_name}_q{question_number}"
-    if hints_bought.get(key):
-        print("Подсказка уже куплена для этого вопроса")
-        return True
     if alisa["монеты"] >= hint_cost:
         print(f"Подсказка доступна! Стоимость: {hint_cost} монет")
         print("1. Купить подсказку")
@@ -38,7 +34,8 @@ def buy_hint(q_data, npc_name, question_number):
             print(f"Оплачено! Осталось монет: {alisa['монеты']}")
             print(f"Подсказка: {q_data['hint']}")
             alisa["история"].append(f"Куплена подсказка за {hint_cost} монет")
-            hints_bought[key] = True
+            # отмечаем, что подсказка использована
+            hints_bought[npc_name + str(question_number)] = True
             return True
     else:
         print(f"Недостаточно монет для подсказки")
@@ -99,7 +96,7 @@ def meet_npc(npc_name):
     alisa["буквы"].extend(earned_letters)
 
     msg = f"Буквы: {', '.join(earned_letters)}" if earned_letters else "Придется откупаться"
-    print(f"{npc_name} = {status if status != 'ВРАГ' else 'врагом'}! {msg}")
+    print(f"{npc_name} = {status if status != 'ВРАГ' else 'враг'}! {msg}")
 
     # Записываем в историю
     alisa["история"].append(f"{npc_name}: {status} ({correct_count}/2 верно)")
