@@ -19,9 +19,9 @@ def get_valid_input(min_val, max_val, prompt="Ваш выбор"):
 def get_text_input(prompt="Ваш ответ"):
     while True:
         text = input(f"{prompt}: ").strip().lower()
-        if text:
+        if text.isalpha():
             return text
-        print("Введите текст!")
+        print("Введите текст, используя только буквы!")
 
 def buy_hint(q_data, npc_name, question_number):
     if alisa["монеты"] >= hint_cost:
