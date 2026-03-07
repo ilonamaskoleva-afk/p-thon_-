@@ -46,14 +46,16 @@ def meet_npc(npc_name):
     print(f"Встреча: {npc_name}")
     correct_count = 0
 
-    for i in range(len(data["questions"])):
-        q = data["questions"][i]
-        print(f"Вопрос {i+1}: {q['q']}")
-        ok = False
+    i = 1
+    for q in data["questions"]:
+        print(f"Вопрос {i}: {q['q']}")
+        i += 1
 
         if q["type"] == "choice":
-            for k in range(len(q["options"])):
-                print(f"  {k+1}. {q['options'][k]}")
+            k = 1
+            for option in q["options"]:
+                print(f"  {k}. {option}")
+                k += 1
             ans = get_valid_input(1, len(q["options"]))
             ok = (ans - 1 == q["correct"])
         else:
@@ -124,11 +126,11 @@ def final_payoff():
     for enemy in alisa["враги"]: print(f"- {enemy}: {npcs[enemy]['enemy_cost']} монет")
     print(f"Итого к оплате: {total_cost} монет\nВаш баланс: {alisa['монеты']} монет")
     
-    if "Королева" in alisa["враги"] and len(alisa["союзники"]) < 1:
-        print("Королева не принимает деньги от одиночек!")
-        alisa["жизни"] = 0
-        return False
-    elif "Королева" in alisa["враги"]:
+    if "Королева" in alisa["враги"]:
+        if len(alisa["союзники"]) < 1:
+            print("Королева не принимает деньги от одиночек!")
+            alisa["жизни"] = 0
+            return False
         print(f"Союзники ({len(alisa['союзники'])}) поручились за вас")
     
     if alisa["монеты"] < total_cost:
@@ -136,7 +138,8 @@ def final_payoff():
         alisa["жизни"] = 0
         return False
     
-    print("1. да 2. нет(и автоматически проиграть)")
+    print("1. да")
+    print("2. нет(и автоматически проиграть)")
     if get_valid_input(1, 2) == 1:
         alisa["монеты"] -= total_cost
         alisa["победы в боях"] += len(alisa["враги"])
@@ -195,19 +198,24 @@ def save_log(filename, ending):
         i = 1
         for record in alisa["история"]:
             print(f"{i}. {record}", file=f)
-            i += 1
-            
+            i += 1       
     print(f"Отчёт сохранён: {filename}")
 
 def main_game():
-    print(f"Цель: Угадать слово. Стартовые данные: 25 монет, 1 жизнь, стоимость подсказки 5 монет!") 
+    print("Цели: угадать слово, минимизировать количество врагов") 
+    print ("Персонаж становится врагом при неправильных ответах на оба вопроса!!")
+    print("Стартовые параметры:")
+    print(f"  Жизни: {alisa['жизни']}")
+    print(f"  Монеты: {alisa['монеты']}")
+    print(f"  Стоимость подсказки: {hint_cost} монет и её можно купить только по одному разу на вопрос, если достаточно монет")
+    print("Внимательно отвечайте на вопросы персонажей и собирайте буквы для финальной головоломки!")
 
+    
     word_guessed = False
 
     for scene in scenes:
         if alisa["жизни"] <= 0:
-            break
-            
+            break  
         print(f"Сцена {scene['id']}: {scene['name']}")
         
         if scene["type"] == "npc":
@@ -221,11 +229,8 @@ def main_game():
                 word_guessed = final_word_puzzle()
 
     ending = get_ending(word_guessed)
-
     print(f"Концовка: {ending}\nБуквы: {''.join(alisa['буквы'])}\nСоюзники: {', '.join(alisa['союзники']) or 'Нет'}\nМонеты: {alisa['монеты']}")
 
     save_log("game_log.txt", ending)
 
-
-if __name__ == "__main__":
-    main_game()
+main_game()
